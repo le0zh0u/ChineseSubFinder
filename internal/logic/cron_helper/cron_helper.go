@@ -1,6 +1,9 @@
 package cron_helper
 
 import (
+	"sync"
+	"time"
+
 	"github.com/allanpk716/ChineseSubFinder/internal/logic/file_downloader"
 	"github.com/allanpk716/ChineseSubFinder/internal/logic/scan_played_video_subinfo"
 	"github.com/allanpk716/ChineseSubFinder/internal/pkg/downloader"
@@ -10,8 +13,6 @@ import (
 	"github.com/allanpk716/ChineseSubFinder/internal/pkg/video_scan_and_refresh_helper"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
-	"sync"
-	"time"
 )
 
 type CronHelper struct {
@@ -30,6 +31,7 @@ type CronHelper struct {
 	entryIDSupplierCheck          cron.EntryID
 	entryIDQueueDownloader        cron.EntryID
 	entryIDScanPlayedVideoSubInfo cron.EntryID
+	entryIDUploadPlayedVideoSub   cron.EntryID
 }
 
 func NewCronHelper(fileDownloader *file_downloader.FileDownloader) *CronHelper {
@@ -45,13 +47,14 @@ func NewCronHelper(fileDownloader *file_downloader.FileDownloader) *CronHelper {
 	var err error
 	// ----------------------------------------------
 	// 扫描已播放
-	ch.scanPlayedVideoSubInfo, err = scan_played_video_subinfo.NewScanPlayedVideoSubInfo(ch.log, ch.Settings)
+	ch.scanPlayedVideoSubInfo, err = scan_played_video_subinfo.NewScanPlayedVideoSubInfo(ch.log, ch.Settings, fileDownloader)
 	if err != nil {
 		ch.log.Panicln(err)
 	}
 	// ----------------------------------------------
 	// 字幕扫描器
 	ch.videoScanAndRefreshHelper = video_scan_and_refresh_helper.NewVideoScanAndRefreshHelper(
+		sub_formatter.GetSubFormatter(ch.log, ch.Settings.AdvancedSettings.SubNameFormatter),
 		ch.FileDownloader,
 		ch.DownloadQueue)
 
@@ -98,27 +101,49 @@ func (ch *CronHelper) Start(runImmediately bool) {
 	}
 	// ----------------------------------------------
 	ch.c = cron.New(cron.WithChain(cron.SkipIfStillRunning(cron.DefaultLogger)))
+	{
+		// 测试部分定时器代码，提前运行
+		if ch.Settings.SpeedDevMode == true {
+
+			//ch.uploadVideoSub()
+			//ch.scanVideoProcessAdd2DownloadQueue()
+		}
+	}
+
 	// 定时器
 	// 这个暂时无法被取消执行
 	ch.entryIDScanVideoProcess, err = ch.c.AddFunc(ch.Settings.CommonSettings.ScanInterval, ch.scanVideoProcessAdd2DownloadQueue)
 	if err != nil {
-		ch.log.Panicln("CronHelper scanVideoProcessAdd2DownloadQueue, Cron entryID:", ch.entryIDScanVideoProcess, "Error:", err)
+		ch.log.Panicln("CronHelper scanVideoProcessAdd2DownloadQueue, scanVideoProcessAdd2DownloadQueue Cron entryID:", ch.entryIDScanVideoProcess, "Error:", err)
 	}
 	// 这个可以由 ch.Downloader.Cancel() 取消执行
 	ch.entryIDSupplierCheck, err = ch.c.AddFunc("@every 1h", ch.Downloader.SupplierCheck)
 	if err != nil {
-		ch.log.Panicln("CronHelper SupplierCheck, Cron entryID:", ch.entryIDSupplierCheck, "Error:", err)
+		ch.log.Panicln("CronHelper SupplierCheck, SupplierCheck Cron entryID:", ch.entryIDSupplierCheck, "Error:", err)
 	}
 	// 这个可以由 ch.Downloader.Cancel() 取消执行
 	ch.entryIDQueueDownloader, err = ch.c.AddFunc("@every 15s", ch.Downloader.QueueDownloader)
 	if err != nil {
-		ch.log.Panicln("CronHelper QueueDownloader, Cron entryID:", ch.entryIDQueueDownloader, "Error:", err)
+		ch.log.Panicln("CronHelper QueueDownloader, QueueDownloader Cron entryID:", ch.entryIDQueueDownloader, "Error:", err)
 	}
 	// 这个可以由 ch.scanPlayedVideoSubInfo.Cancel() 取消执行
 	ch.entryIDScanPlayedVideoSubInfo, err = ch.c.AddFunc("@every 24h", ch.scanPlayedVideoSub)
 	if err != nil {
-		ch.log.Panicln("CronHelper QueueDownloader, Cron entryID:", ch.entryIDScanPlayedVideoSubInfo, "Error:", err)
+		ch.log.Panicln("CronHelper QueueDownloader, scanPlayedVideoSub Cron entryID:", ch.entryIDScanPlayedVideoSubInfo, "Error:", err)
 	}
+	// 字幕的上传逻辑
+	if ch.Settings.ExperimentalFunction.ShareSubSettings.ShareSubEnabled == true {
+
+		intervalNowTask := "@every 1m"
+		if ch.Settings.SpeedDevMode == true {
+			intervalNowTask = "@every 1s"
+		}
+		ch.entryIDUploadPlayedVideoSub, err = ch.c.AddFunc(intervalNowTask, ch.uploadVideoSub)
+		if err != nil {
+			ch.log.Panicln("CronHelper QueueDownloader, uploadVideoSub Cron entryID:", ch.entryIDUploadPlayedVideoSub, "Error:", err)
+		}
+	}
+
 	// ----------------------------------------------
 	if runImmediately == true {
 		// 是否在定时器开启前先执行一次视频扫描任务

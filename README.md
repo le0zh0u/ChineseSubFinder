@@ -6,6 +6,8 @@
 >
 > [大版本规划，以及新功能“共享字幕”功能的简介和讨论](https://github.com/allanpk716/ChineseSubFinder/issues/277)
 
+> docker 如果拉取 latest 标签，可能在国内无法真正拉取到最新镜像，请手动指定具体的一个版本，比如: chinesesubfinder:v0.29.0
+
 ## 前置要求
 
 如果想顺利的用起来，还是对电影、连续剧的目录有一定的要求的。见文档:
@@ -18,7 +20,7 @@
 有两个文档可以参考：
 
 - [v0.26 教程、更新说明](https://github.com/allanpk716/ChineseSubFinder/tree/docs/DesignFile/v0.26教程)
-- [对外的 http api](https://github.com/allanpk716/ChineseSubFinder/tree/docs/DesignFile/ApiKey%E8%AE%BE%E8%AE%A1)
+- [对外的 http api](https://github.com/allanpk716/ChineseSubFinder/tree/docs/DesignFile/ApiKey%E8%AE%BE%E8%AE%A1),以及[示例](https://github.com/allanpk716/ChineseSubFinder/issues/336)
 - [Docker ChineseSubFinder--中文字幕自动下载 | sleele 的博客 - 第三方教程](https://sleele.com/2021/06/25/docker-chinesesubfinder-中文字幕自动下载/)
 
 高阶设置：
@@ -83,6 +85,9 @@ go mod tidy ，然后需要设置 CGO=1 ，找到 cmd\chinesesubfinder\main.go �
 
 ## 版本
 
+- v0.30.x 新增，“共享字幕”，低可信字幕收集功能 -- 2022 年 6 月 5 日
+- v0.29.x 新增，“共享字幕”，详细见 WebUI “实验室页面”对应设置 -- 2022 年 5 月 29 日
+- v0.28.x 优化，assrt 查询逻辑，对接 TMDB 中文信息查询 -- 2022 年 5 月 27 日
 - v0.27.x 新增，assrt 字幕源，取消 zimuku 支持 -- 2022 年 5 月 19 日
 - v0.26.x 大范围重构，详细教程和更新说明见，[v0.26 教程、更新说明](https://github.com/allanpk716/ChineseSubFinder/tree/docs/DesignFile/v0.26教程) -- 2022 年 5 月 13 日
 - v0.25.x 调整细节，支持 cron 定时、指定时间、自定义 cron 规则，触发下载任务 -- 2022 年 4 月 6 日

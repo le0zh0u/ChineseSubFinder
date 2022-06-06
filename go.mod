@@ -20,7 +20,7 @@ require (
 	github.com/go-echarts/go-echarts/v2 v2.2.4
 	github.com/go-git/go-git/v5 v5.4.2
 	github.com/go-resty/resty/v2 v2.6.0
-	github.com/go-rod/rod v0.106.5
+	github.com/go-rod/rod v0.106.8
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.4.2
@@ -69,8 +69,11 @@ require (
 
 require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
+	github.com/cyruzin/golang-tmdb v1.4.3
 	github.com/elazarl/goproxy v0.0.0-20220417044921-416226498f94
 	github.com/longbridgeapp/opencc v0.1.7
+	github.com/urfave/cli/v2 v2.6.0
+	github.com/wumansgy/goEncrypt v1.0.0
 )
 
 require (
@@ -84,7 +87,7 @@ require (
 	github.com/bodgit/plumbing v1.1.0 // indirect
 	github.com/bodgit/windows v1.0.0 // indirect
 	github.com/connesc/cipherio v0.2.1 // indirect
-	github.com/cyruzin/golang-tmdb v1.4.3 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-git/gcfg v1.5.0 // indirect
@@ -116,6 +119,7 @@ require (
 	github.com/nwaples/rardecode v1.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.0.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
@@ -137,5 +141,5 @@ require (
 replace (
 	github.com/go-creed/sat => github.com/allanpk716/sat v0.0.0-20210622112535-2e00ce54a80b
 	github.com/longbridgeapp/opencc => github.com/allanpk716/opencc v0.1.8
-	github.com/middelink/go-parse-torrent-name => github.com/allanpk716/go-parse-torrent-name v0.0.0-20220212145434-430ea25cbba7
+	github.com/middelink/go-parse-torrent-name => github.com/allanpk716/go-parse-torrent-name v0.0.1
 )

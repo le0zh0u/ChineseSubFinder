@@ -13,6 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/allanpk716/ChineseSubFinder/internal/pkg/mix_media_info"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/Tnze/go.num/v2/zh"
 	"github.com/allanpk716/ChineseSubFinder/internal/logic/file_downloader"
@@ -137,11 +139,34 @@ func (s *Supplier) GetSubListFromFile4Series(seriesInfo *series.SeriesInfo) ([]s
 	defer func() {
 		_ = browser.Close()
 	}()
+
+	mediaInfo, err := mix_media_info.GetMixMediaInfo(s.log, s.fileDownloader.SubtitleBestApi,
+		seriesInfo.EpList[0].FileFullPath, false,
+		s.settings.AdvancedSettings.ProxySettings)
+	if err != nil {
+		s.log.Errorln(s.GetSupplierName(), seriesInfo.EpList[0].FileFullPath, "GetMixMediaInfo", err)
+		return nil, err
+	}
+	// 优先中文查询
+	keyWord, err := mix_media_info.KeyWordSelect(mediaInfo, seriesInfo.EpList[0].FileFullPath, true, "cn")
+	if err != nil {
+		s.log.Errorln(s.GetSupplierName(), seriesInfo.EpList[0].FileFullPath, "keyWordSelect", err)
+		return nil, err
+	}
+	if keyWord == "" {
+		// 更换英文译名
+		keyWord, err = mix_media_info.KeyWordSelect(mediaInfo, seriesInfo.EpList[0].FileFullPath, true, "en")
+		if err != nil {
+			s.log.Errorln(s.GetSupplierName(), seriesInfo.EpList[0].FileFullPath, "keyWordSelect", err)
+			return nil, err
+		}
+	}
 	var subInfos = make([]supplier.SubInfo, 0)
 	var subList = make([]HdListItem, 0)
 	for value := range seriesInfo.NeedDlSeasonDict {
 		// 第一级界面，找到影片的详情界面
-		keyword := seriesInfo.Name + " 第" + zh.Uint64(value).String() + "季"
+		//keyword := seriesInfo.Name + " 第" + zh.Uint64(value).String() + "季"
+		keyword := keyWord + " 第" + zh.Uint64(value).String() + "季"
 		s.log.Infoln("Search Keyword:", keyword)
 		detailPageUrl, err := s.step0(browser, keyword)
 		if err != nil {
@@ -202,11 +227,6 @@ func (s *Supplier) getSubListFromFile4Movie(filePath string) ([]supplier.SubInfo
 		优先通过 IMDB id 去查找字幕
 		如果找不到，再靠文件名提取影片名称去查找
 	*/
-	// 得到这个视频文件名中的信息
-	info, _, err := decode.GetVideoInfoFromFileFullPath(filePath)
-	if err != nil {
-		return nil, err
-	}
 	// 找到这个视频文件，尝试得到 IMDB ID
 	// 目前测试来看，加入 年 这个关键词去搜索，对 2020 年后的影片有利，因为网站有统一的详细页面了，而之前的，没有，会影响识别
 	// 所以，year >= 2020 年，则可以多加一个关键词（年）去搜索影片
@@ -230,12 +250,45 @@ func (s *Supplier) getSubListFromFile4Movie(filePath string) ([]supplier.SubInfo
 			return subInfoList, nil
 		}
 	}
+	s.log.Infoln(s.GetSupplierName(), filePath, "No subtitle found", "KeyWord:", imdbInfo.ImdbId)
+	mediaInfo, err := mix_media_info.GetMixMediaInfo(s.log, s.fileDownloader.SubtitleBestApi,
+		filePath, true,
+		s.settings.AdvancedSettings.ProxySettings)
+	if err != nil {
+		s.log.Errorln(s.GetSupplierName(), filePath, "GetMixMediaInfo", err)
+		return nil, err
+	}
+	// 优先中文查询
+	keyWord, err := mix_media_info.KeyWordSelect(mediaInfo, filePath, true, "cn")
+	if err != nil {
+		s.log.Errorln(s.GetSupplierName(), filePath, "keyWordSelect", err)
+		return nil, err
+	}
 	// 如果没有，那么就用文件名查找
-	searchKeyword := my_util.VideoNameSearchKeywordMaker(s.log, info.Title, imdbInfo.Year)
+	searchKeyword := my_util.VideoNameSearchKeywordMaker(s.log, keyWord, imdbInfo.Year)
 	subInfoList, err = s.getSubListFromKeyword4Movie(searchKeyword)
 	if err != nil {
 		s.log.Errorln(s.GetSupplierName(), "keyword:", searchKeyword)
 		return nil, err
+	}
+	if len(subInfoList) < 1 {
+		// 切换到英文查询
+		s.log.Infoln(s.GetSupplierName(), filePath, "No subtitle found", "KeyWord:", searchKeyword)
+		keyWord, err = mix_media_info.KeyWordSelect(mediaInfo, filePath, true, "cn")
+		if err != nil {
+			s.log.Errorln(s.GetSupplierName(), filePath, "keyWordSelect", err)
+			return nil, err
+		}
+		// 如果没有，那么就用文件名查找
+		searchKeyword = my_util.VideoNameSearchKeywordMaker(s.log, keyWord, imdbInfo.Year)
+		subInfoList, err = s.getSubListFromKeyword4Movie(searchKeyword)
+		if err != nil {
+			s.log.Errorln(s.GetSupplierName(), "keyword:", searchKeyword)
+			return nil, err
+		}
+		if len(subInfoList) < 1 {
+			s.log.Infoln(s.GetSupplierName(), filePath, "No subtitle found", "KeyWord:", searchKeyword)
+		}
 	}
 
 	return subInfoList, nil
@@ -326,6 +379,10 @@ func (s *Supplier) whichEpisodeNeedDownloadSub(seriesInfo *series.SeriesInfo, al
 	}
 	// 全季的字幕列表，也拼进去，后面进行下载
 	for _, infos := range oneSeasonSubDict {
+
+		if len(infos) < 1 {
+			continue
+		}
 		subInfoNeedDownload = append(subInfoNeedDownload, infos[0])
 	}
 
